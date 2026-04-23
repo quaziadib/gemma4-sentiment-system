@@ -2,16 +2,14 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    # VLLM
+    # OpenAI-compatible inference backend
     vllm_base_url: str = "http://localhost:8000"
     vllm_model_name: str = "gemma-4-26B-A4B-it-UD-Q4_K_XL"
     vllm_api_key: str = "none"
 
-    # Generation
-    max_new_tokens: int = 512
+    # API generation defaults
     temperature: float = 0.1
     top_p: float = 0.9
-    repetition_penalty: float = 1.1
 
     # API server
     api_host: str = "0.0.0.0"
