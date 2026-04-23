@@ -1,0 +1,57 @@
+version: "3.9"
+
+services:
+  vllm:
+    image: vllm/vllm-openai:latest
+    container_name: gemma4-vllm
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - HF_TOKEN=${HF_TOKEN:-}
+    volumes:
+      - huggingface_cache:/root/.cache/huggingface
+    ports:
+      - "8000:8000"
+    command: >
+      unsloth/gemma-4-26B-A4B-it-GGUF
+      --tokenizer google/gemma-3-27b-it
+      --quantization gguf
+      --model-loader-extra-config '{"gguf_file": "gemma-4-26B-A4B-it-UD-Q4_K_XL.gguf"}'
+      --max-model-len 8192
+      --gpu-memory-utilization 0.90
+      --host 0.0.0.0
+      --port 8000
+      --served-model-name unsloth/gemma-4-26B-A4B-it-GGUF
+      --enable-prefix-caching
+      --trust-remote-code
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  api:
+    build: .
+    container_name: gemma4-mt-api
+    environment:
+      - VLLM_BASE_URL=http://vllm:8000
+      - VLLM_MODEL_NAME=unsloth/gemma-4-26B-A4B-it-GGUF
+      - API_WORKERS=4
+      - MAX_CONCURRENT_REQUESTS=64
+    ports:
+      - "9000:9000"
+    depends_on:
+      vllm:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  huggingface_cache:
